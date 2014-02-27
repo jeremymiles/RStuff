@@ -1,0 +1,33 @@
+
+#Function for covariance coverage
+#Creates covariance coverage matrix, like Mplus
+covcov <- function(x) {
+  
+  numericVars <- sapply(x, is.numeric)
+  nonNumericVars <- !numericVars
+  
+  if(sum(nonNumericVars > 0)) {
+    print(paste0("Some variables are not numeric.", 
+                  "These have been discarded."))
+    print(paste0("Discards are: ", names(x)[nonNumericVars]))
+  
+  }
+  
+  x <- x[numericVars]
+  
+  nVars <-  ncol(x)  #matDim is number of vars
+  covCovMatrix <- matrix(data=NA, nrow=nVars, ncol=nVars)
+  rownames(covCovMatrix) <- names(x)
+  colnames(covCovMatrix) <- names(x)
+  for(rows in c(1:nVars)){
+    for(columns in c(1:nVars)){
+    if(rows == columns) { 
+        covCovMatrix[rows, columns] <- round(mean(!is.na(x[, columns])), 3) 
+      }
+      if(rows != columns) { 
+        covCovMatrix[rows, columns] <- round(mean(!is.na(x[,columns] + x[, rows])), 3) 
+      }
+    }
+  }
+  return(covCovMatrix)
+}
