@@ -1,15 +1,14 @@
 
 #Function for covariance coverage
-#Creates covariance coverage matrix, like Mplus
 covcov <- function(x) {
   
   numericVars <- sapply(x, is.numeric)
   nonNumericVars <- !numericVars
   
   if(sum(nonNumericVars > 0)) {
-    print(paste0("Some variables are not numeric.", 
-                  "These have been discarded."))
-    print(paste0("Discards are: ", names(x)[nonNumericVars]))
+    warning(paste0("Some variables are not numeric.", 
+                  "These have been discarded. \n", 
+                   "Discards are: ", names(x)[nonNumericVars]))
   
   }
   
