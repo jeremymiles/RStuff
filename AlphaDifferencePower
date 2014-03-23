@@ -1,0 +1,38 @@
+
+library(psych)
+library(cocron)
+library(MASS)
+
+
+popCor1 <- 0.5
+popCor2 <- 0.4
+nSims <- 10
+nPeople <- 500
+nvars <- 5
+popCorMat1 <- matrix(rep(popCor1, nvars^2), nrow=nvars)
+diag(popCorMat1) <- rep(1, nvars)
+
+
+popCorMat2 <- matrix(rep(popCor2, nvars^2), nrow=nvars)
+diag(popCorMat2) <- rep(1, nvars)
+
+#This gives the population values for alpha
+alpha(popCorMat1)
+alpha(popCorMat2)
+
+res <- rep(NA, nSims)
+
+res <- sapply(res, function(x) {
+  alpha1 <- alpha(as.data.frame(mvrnorm(n = nPeople, 
+                  Sigma=popCorMat1, mu=rep(0, 5))))$total[[1]]
+  alpha2 <- alpha(as.data.frame(mvrnorm(n = nPeople, 
+                                        Sigma=popCorMat2, mu=rep(0, 5))))$total[[1]]
+  
+  return (
+    cocron.two.coefficients(alpha=c(alpha1, alpha2), n=nPeople, dep=FALSE)@p.value
+    )
+    
+})
+
+#This gives power
+mean(res < 0.05)
