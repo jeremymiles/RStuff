@@ -1,0 +1,934 @@
+Power Analysis for Sleep Project
+========================================================
+
+
+
+```{r Aim1Part1}
+
+library(lavaan)
+
+## Power Aim 1, part 1
+rm(list=ls())
+x <- runif(8000)
+x <- matrix(x, ncol=8)
+x <- as.data.frame(x)
+
+names(x) <- c("s1", "s2", "s3","s4","a1", "a2", "a3","a4")
+
+x <- as.data.frame(apply(x, 2, function(a) a = a/sd(a)))
+
+#Set up two group model, with a large and a small cross lagged effect
+#To determine power to detect the difference
+
+smallCLEffect <- 0.1   #Set up the size of the small cross lagged effect
+smallEffectFitted <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+
+s2 ~ ",smallCLEffect, "*a1
+s3 ~ ",smallCLEffect, "*a2
+s4 ~ ",smallCLEffect, "*a3
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+
+a1 ~~ a1
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+
+")
+
+fitSmallEffect <- sem(model=smallEffectFitted, data=x, mimic="EQS", 
+            fixed.x=FALSE)
+
+summary(fitSmallEffect, standardized=TRUE)
+
+smallCov <- fitted(fitSmallEffect)$cov
+smallMeans <- fitted(fitSmallEffect)$mean
+
+
+
+getChi <- "
+a1 ~~  s1
+a2 ~~  s2
+a3 ~~  s3
+a4 ~~  s4
+
+a2 ~  a1
+a3 ~  a2
+a4 ~  a3
+
+s2 ~ s1
+s3 ~ s2
+s4 ~ s3
+
+#remove these to get chi-square
+#s2 ~ a1
+#s3 ~ a2
+#s4 ~ a3
+
+a2 ~ s1
+a3 ~ s2
+a4 ~ s3
+
+a1 ~~ a1
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+
+"
+
+
+fit3 <- sem(model=getChi , sample.cov=smallCov , 
+            sample.nobs=3000)
+summary(fit3)
+
+chi <- fitmeasures(fit3, "chisq")
+
+
+
+#This gives power assuming stationarity
+pchisq(q=3.84, df=1, ncp=chi, lower.tail=FALSE)
+#This gives power not assuming stationarity
+pchisq(q=7.81, df=3, ncp=chi, lower.tail=FALSE)
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r Aim1Part2}
+
+#set small and large to 0.23 and 0.30 for 80%, or 
+
+smallCLEffect <- 0.30   #Set up the size of the small cross lagged effect
+largeCLEffect <- 0.21   #Set up the size of the small cross lagged effect
+
+smallEffectFitted <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+
+s2 ~ ",smallCLEffect, "*a1
+s3 ~ ",smallCLEffect, "*a2
+s4 ~ ",smallCLEffect, "*a3
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+
+a1 ~~ a1
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+
+")
+
+fitSmallEffect <- sem(model=smallEffectFitted, data=x, 
+            fixed.x=FALSE)
+
+summary(fitSmallEffect, standardized=TRUE)
+
+smallCov <- fitted(fitSmallEffect)$cov
+smallMeans <- fitted(fitSmallEffect)$mean
+
+#Now do the large effect
+
+
+largeEffectFitted <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+
+s2 ~ ",largeCLEffect, "*a1
+s3 ~ ",largeCLEffect, "*a2
+s4 ~ ",largeCLEffect, "*a3
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+
+a1 ~~ a1
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+
+")
+
+
+fitLargeEffect <- sem(model=largeEffectFitted , data=x, 
+            sample.nobs=3000, 
+            fixed.x=FALSE)
+summary(fitLargeEffect)
+
+
+summary(fitLargeEffect, standardized=TRUE)
+
+largeCov <- fitted(fitLargeEffect )$cov
+largeMeans <- fitted(fitLargeEffect )$mean
+
+
+
+#Because this is trickier, we 
+#fit the separate models and make sure we got the above correct
+testMultiple <- "
+a1 ~~  s1
+a2 ~~  s2
+a3 ~~  s3
+a4 ~~  s4
+
+a2 ~  a1
+a3 ~  a2
+a4 ~  a3
+
+s2 ~ s1
+s3 ~ s2
+s4 ~ s3
+
+
+s2 ~ c(g1, g2) * a1
+s3 ~ c(g1, g2) * a2
+s4 ~ c(g1, g2) * a3
+
+a2 ~ s1
+a3 ~ s2
+a4 ~ s3
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+
+
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+
+"
+
+#Create list of cov matrices.
+twoCovs <- list(smallCov, largeCov)
+twoNs <- c(1000, 1000)
+
+fitTestMultiple <- sem(model=testMultiple, sample.cov=twoCovs, 
+            sample.nobs=twoNs)
+summary(fitTestMultiple)
+
+
+
+
+
+#Now fit the model with constraints
+testMultipleConstrained <- "
+a1 ~~  s1
+a2 ~~  s2
+a3 ~~  s3
+a4 ~~  s4
+
+a2 ~  a1
+a3 ~  a2
+a4 ~  a3
+
+s2 ~ s1
+s3 ~ s2
+s4 ~ s3
+
+
+s2 ~ c(g1, g1) * a1
+s3 ~ c(g1, g1) * a2
+s4 ~ c(g1, g1) * a3
+
+a2 ~ s1
+a3 ~ s2
+a4 ~ s3
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+
+
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+
+"
+twoCovs <- list(smallCov, largeCov)
+twoNs <- c(1000, 1000)
+
+fitTestMultipleConstrained <- sem(model=testMultipleConstrained, 
+                                  sample.cov=twoCovs,         
+                                  sample.nobs=twoNs)
+summary(fitTestMultipleConstrained)
+
+
+chi <- fitmeasures(fitTestMultipleConstrained, "chisq")
+
+#This gives power assuming stationarity
+pchisq(q=3.84, df=1, ncp=chi, lower.tail=FALSE)
+#This gives power not assuming stationarity
+pchisq(q=9.48, df=4, ncp=chi, lower.tail=FALSE)
+
+```
+
+
+
+
+
+
+
+
+
+```{r Aim2Part1}
+library(lavaan)
+
+## Power Aim 2, part 1
+rm(list=ls())
+x <- runif(8000)
+x <- matrix(x, ncol=20)
+x <- as.data.frame(x)
+
+names(x) <- c(paste0("s", 1:10), paste0("a",1:10 ))
+
+x <- as.data.frame(apply(x, 2, function(a) a = a/sd(a)))
+
+largeCLEffect <- 0.05
+
+SingleGroupModelFitted <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+a5 ~~ 0.1*s5
+a6 ~~ 0.1*s6
+a7 ~~ 0.1*s7
+a8 ~~ 0.1*s8
+a9 ~~ 0.1*s9
+a10 ~~ 0.1*s10
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+a5 ~ 0.7*a4
+a6 ~ 0.7*a5
+a7 ~ 0.7*a6
+a8 ~ 0.7*a7
+a9 ~ 0.7*a8
+a10 ~ 0.7*a9
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+s5 ~ 0.7*s4
+s6 ~ 0.7*s5
+s7 ~ 0.7*s6
+s8 ~ 0.7*s7
+s9 ~ 0.7*s8
+s10 ~ 0.7*s9
+
+
+s2 ~",largeCLEffect, "*a1
+s3 ~ ",largeCLEffect, "*a2
+s4 ~ ",largeCLEffect, "*a3
+s5 ~ ",largeCLEffect, "*a4
+s6 ~ ",largeCLEffect, "*a5
+s7 ~ ",largeCLEffect, "*a6
+s8 ~ ",largeCLEffect, "*a7
+s9 ~ ",largeCLEffect, "*a8
+s10 ~ ",largeCLEffect, "*a9
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+a5 ~ 0*s4
+a6 ~ 0*s5
+a7 ~ 0*s6
+a8 ~ 0*s7
+a9 ~ 0*s8
+a10 ~ 0*s9
+
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+a5 ~~ a5
+a6 ~~ a6
+a7 ~~ a7
+a8 ~~ a8
+a9 ~~ a9
+a10 ~~ a10
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+s5 ~~ s5
+s6 ~~ s6
+s7 ~~ s7
+s8 ~~ s8
+s9 ~~ s9
+s10 ~~ s10
+
+")
+
+fit1 <- sem(model=SingleGroupModelFitted, data=x)
+summary(fit1, standardized=TRUE)
+
+imp <- fitted(fit1)$cov
+largeCLEffect <- 0
+SingleGroupModelEstimated <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+a5 ~~ 0.1*s5
+a6 ~~ 0.1*s6
+a7 ~~ 0.1*s7
+a8 ~~ 0.1*s8
+a9 ~~ 0.1*s9
+a10 ~~ 0.1*s10
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+a5 ~ 0.7*a4
+a6 ~ 0.7*a5
+a7 ~ 0.7*a6
+a8 ~ 0.7*a7
+a9 ~ 0.7*a8
+a10 ~ 0.7*a9
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+s5 ~ 0.7*s4
+s6 ~ 0.7*s5
+s7 ~ 0.7*s6
+s8 ~ 0.7*s7
+s9 ~ 0.7*s8
+s10 ~ 0.7*s9
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+a5 ~ 0*s4
+a6 ~ 0*s5
+a7 ~ 0*s6
+a8 ~ 0*s7
+a9 ~ 0*s8
+a10 ~ 0*s9
+
+
+s2 ~",largeCLEffect, "*a1
+s3 ~ ",largeCLEffect, "*a2
+s4 ~ ",largeCLEffect, "*a3
+s5 ~ ",largeCLEffect, "*a4
+s6 ~ ",largeCLEffect, "*a5
+s7 ~ ",largeCLEffect, "*a6
+s8 ~ ",largeCLEffect, "*a7
+s9 ~ ",largeCLEffect, "*a8
+s10 ~ ",largeCLEffect, "*a9
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+a5 ~~ a5
+a6 ~~ a6
+a7 ~~ a7
+a8 ~~ a8
+a9 ~~ a9
+a10 ~~ a10
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+s5 ~~ s5
+s6 ~~ s6
+s7 ~~ s7
+s8 ~~ s8
+s9 ~~ s9
+s10 ~~ s10
+
+")
+
+
+
+
+getChi <- sem(model=SingleGroupModelEstimated , sample.cov=imp, 
+            sample.nobs=400)
+summary(getChi)
+
+chi <- fitmeasures(getChi, "chisq")
+
+#This gives power assuming stationarity
+pchisq(q=3.84, df=1, ncp=chi, lower.tail=FALSE)
+#This gives power not assuming stationarity
+pchisq(q=16.91, df=9, ncp=chi, lower.tail=FALSE)
+
+```
+
+
+
+```{r Aim2Part2}
+library(lavaan)
+
+## Power Aim 2, part 1
+rm(list=ls())
+x <- runif(8000)
+x <- matrix(x, ncol=20)
+x <- as.data.frame(x)
+
+names(x) <- c(paste0("s", 1:10), paste0("a",1:10 ))
+
+x <- as.data.frame(apply(x, 2, function(a) a = a/sd(a)))
+
+largeCLEffect <- 0.30
+smallCLEffect <- 0.17
+
+largeEffectFitted <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+a5 ~~ 0.1*s5
+a6 ~~ 0.1*s6
+a7 ~~ 0.1*s7
+a8 ~~ 0.1*s8
+a9 ~~ 0.1*s9
+a10 ~~ 0.1*s10
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+a5 ~ 0.7*a4
+a6 ~ 0.7*a5
+a7 ~ 0.7*a6
+a8 ~ 0.7*a7
+a9 ~ 0.7*a8
+a10 ~ 0.7*a9
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+s5 ~ 0.7*s4
+s6 ~ 0.7*s5
+s7 ~ 0.7*s6
+s8 ~ 0.7*s7
+s9 ~ 0.7*s8
+s10 ~ 0.7*s9
+
+
+s2 ~",largeCLEffect, "*a1
+s3 ~ ",largeCLEffect, "*a2
+s4 ~ ",largeCLEffect, "*a3
+s5 ~ ",largeCLEffect, "*a4
+s6 ~ ",largeCLEffect, "*a5
+s7 ~ ",largeCLEffect, "*a6
+s8 ~ ",largeCLEffect, "*a7
+s9 ~ ",largeCLEffect, "*a8
+s10 ~ ",largeCLEffect, "*a9
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+a5 ~ 0*s4
+a6 ~ 0*s5
+a7 ~ 0*s6
+a8 ~ 0*s7
+a9 ~ 0*s8
+a10 ~ 0*s9
+
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+a5 ~~ a5
+a6 ~~ a6
+a7 ~~ a7
+a8 ~~ a8
+a9 ~~ a9
+a10 ~~ a10
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+s5 ~~ s5
+s6 ~~ s6
+s7 ~~ s7
+s8 ~~ s8
+s9 ~~ s9
+s10 ~~ s10
+
+")
+
+
+
+smallEffectFitted <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+a5 ~~ 0.1*s5
+a6 ~~ 0.1*s6
+a7 ~~ 0.1*s7
+a8 ~~ 0.1*s8
+a9 ~~ 0.1*s9
+a10 ~~ 0.1*s10
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+a5 ~ 0.7*a4
+a6 ~ 0.7*a5
+a7 ~ 0.7*a6
+a8 ~ 0.7*a7
+a9 ~ 0.7*a8
+a10 ~ 0.7*a9
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+s5 ~ 0.7*s4
+s6 ~ 0.7*s5
+s7 ~ 0.7*s6
+s8 ~ 0.7*s7
+s9 ~ 0.7*s8
+s10 ~ 0.7*s9
+
+
+s2 ~",smallCLEffect, "*a1
+s3 ~ ",smallCLEffect, "*a2
+s4 ~ ",smallCLEffect, "*a3
+s5 ~ ",smallCLEffect, "*a4
+s6 ~ ",smallCLEffect, "*a5
+s7 ~ ",smallCLEffect, "*a6
+s8 ~ ",smallCLEffect, "*a7
+s9 ~ ",smallCLEffect, "*a8
+s10 ~ ",smallCLEffect, "*a9
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+a5 ~ 0*s4
+a6 ~ 0*s5
+a7 ~ 0*s6
+a8 ~ 0*s7
+a9 ~ 0*s8
+a10 ~ 0*s9
+
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+a5 ~~ a5
+a6 ~~ a6
+a7 ~~ a7
+a8 ~~ a8
+a9 ~~ a9
+a10 ~~ a10
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+s5 ~~ s5
+s6 ~~ s6
+s7 ~~ s7
+s8 ~~ s8
+s9 ~~ s9
+s10 ~~ s10
+
+")
+
+
+
+
+fitLargeEffect <- sem(model=largeEffectFitted , data=x, 
+            sample.nobs=150, 
+            fixed.x=FALSE)
+
+summary(fitLargeEffect, standardized=TRUE)
+
+largeCov <- fitted(fitLargeEffect )$cov
+largeMeans <- fitted(fitLargeEffect )$mean
+
+
+
+
+fitSmallEffect <- sem(model=smallEffectFitted , data=x, 
+            sample.nobs=150, 
+            fixed.x=FALSE)
+
+summary(fitSmallEffect, standardized=TRUE)
+smallCov <- fitted(fitSmallEffect )$cov
+smallMeans <- fitted(fitSmallEffect )$mean
+
+
+fitLargeEffect <- sem(model=largeEffectFitted , data=x, 
+            sample.nobs=150, 
+            fixed.x=FALSE)
+
+summary(fitLargeEffect, standardized=TRUE)
+
+largeCov <- fitted(fitLargeEffect )$cov
+largeMeans <- fitted(fitLargeEffect )$mean
+
+
+
+
+
+
+testParams <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+a5 ~~ 0.1*s5
+a6 ~~ 0.1*s6
+a7 ~~ 0.1*s7
+a8 ~~ 0.1*s8
+a9 ~~ 0.1*s9
+a10 ~~ 0.1*s10
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+a5 ~ 0.7*a4
+a6 ~ 0.7*a5
+a7 ~ 0.7*a6
+a8 ~ 0.7*a7
+a9 ~ 0.7*a8
+a10 ~ 0.7*a9
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+s5 ~ 0.7*s4
+s6 ~ 0.7*s5
+s7 ~ 0.7*s6
+s8 ~ 0.7*s7
+s9 ~ 0.7*s8
+s10 ~ 0.7*s9
+
+
+s2 ~ c(g1, g2) *a1
+s3 ~  c(g1, g2) *a2
+s4 ~  c(g1, g2) *a3
+s5 ~  c(g1, g2) *a4
+s6 ~  c(g1, g2) *a5
+s7 ~  c(g1, g2) *a6
+s8 ~  c(g1, g2) *a7
+s9 ~  c(g1, g2) *a8
+s10 ~  c(g1, g2) *a9
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+a5 ~ 0*s4
+a6 ~ 0*s5
+a7 ~ 0*s6
+a8 ~ 0*s7
+a9 ~ 0*s8
+a10 ~ 0*s9
+
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+a5 ~~ a5
+a6 ~~ a6
+a7 ~~ a7
+a8 ~~ a8
+a9 ~~ a9
+a10 ~~ a10
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+s5 ~~ s5
+s6 ~~ s6
+s7 ~~ s7
+s8 ~~ s8
+s9 ~~ s9
+s10 ~~ s10
+
+")
+
+
+
+twoCovs <- list(smallCov, largeCov)
+twoNs <- c(150, 150)
+
+testParamsFitted <- sem(model=testParams , sample.cov=twoCovs, 
+            sample.nobs=twoNs)
+
+summary(testParamsFitted)
+
+
+
+
+
+fixParams <- paste0("
+a1 ~~ 0.1*s1
+a2 ~~ 0.1*s2
+a3 ~~ 0.1*s3
+a4 ~~ 0.1*s4
+a5 ~~ 0.1*s5
+a6 ~~ 0.1*s6
+a7 ~~ 0.1*s7
+a8 ~~ 0.1*s8
+a9 ~~ 0.1*s9
+a10 ~~ 0.1*s10
+
+a2 ~ 0.7*a1
+a3 ~ 0.7*a2
+a4 ~ 0.7*a3
+a5 ~ 0.7*a4
+a6 ~ 0.7*a5
+a7 ~ 0.7*a6
+a8 ~ 0.7*a7
+a9 ~ 0.7*a8
+a10 ~ 0.7*a9
+
+s2 ~ 0.7*s1
+s3 ~ 0.7*s2
+s4 ~ 0.7*s3
+s5 ~ 0.7*s4
+s6 ~ 0.7*s5
+s7 ~ 0.7*s6
+s8 ~ 0.7*s7
+s9 ~ 0.7*s8
+s10 ~ 0.7*s9
+
+
+s2 ~ c(g1, g1) *a1
+s3 ~  c(g1, g1) *a2
+s4 ~  c(g1, g1) *a3
+s5 ~  c(g1, g1) *a4
+s6 ~  c(g1, g1) *a5
+s7 ~  c(g1, g1) *a6
+s8 ~  c(g1, g1) *a7
+s9 ~  c(g1, g1) *a8
+s10 ~  c(g1, g1) *a9
+
+a2 ~ 0*s1
+a3 ~ 0*s2
+a4 ~ 0*s3
+a5 ~ 0*s4
+a6 ~ 0*s5
+a7 ~ 0*s6
+a8 ~ 0*s7
+a9 ~ 0*s8
+a10 ~ 0*s9
+
+
+a2 ~~ a2
+a3 ~~ a3
+a4 ~~ a4
+a5 ~~ a5
+a6 ~~ a6
+a7 ~~ a7
+a8 ~~ a8
+a9 ~~ a9
+a10 ~~ a10
+
+s1 ~~ s1
+s2 ~~ s2
+s3 ~~ s3
+s4 ~~ s4
+s5 ~~ s5
+s6 ~~ s6
+s7 ~~ s7
+s8 ~~ s8
+s9 ~~ s9
+s10 ~~ s10
+
+")
+
+
+
+
+getChiFitted <- sem(model=fixParams , sample.cov=twoCovs, 
+            sample.nobs=twoNs)
+
+summary(getChiFitted)
+
+chi <- fitmeasures(getChiFitted, "chisq")
+
+#This gives power assuming stationarity
+pchisq(q=3.84, df=1, ncp=chi, lower.tail=FALSE)
+#This gives power not assuming stationarity
+pchisq(q=18.3, df=10, ncp=chi, lower.tail=FALSE)
+
+```
+
+
+
+
+
+
+
