@@ -1,0 +1,17 @@
+
+#Function to take a scale, autoreverse items and calculate the mean
+autoReverseMean <- function(x) {
+  if(sum(apply(x, 2, is.numeric) == FALSE) != 0) stop("All variables must be numeric")
+  nVar <- ncol(x)
+  maxVal <- max(x, na.rm=TRUE)
+  minVal <- min(x, na.rm=TRUE)
+  keys <- fa(x)$loadings /   abs(fa(x)$loadings )
+  keys <- keys[1:nVar]
+  
+  for(loop in c(1:nVar)){
+    if(keys[loop] == -1) {
+      x[,loop] <- x[,loop] * -1 + maxVal + minVal
+    }
+  }
+  return(apply(x, 1, na.rm=TRUE, mean)  )
+}
